@@ -23,13 +23,20 @@ static inline int _group_process(proc_t *p){
 	struct cgroup *cgr = cgroup_get("cpu", cgroup_name, true);
 	int ret = cgroup_attach(cgr, p->tgid);
 	free(cgroup_name);
+	cgroup_put(cgr);
 	free(cgr);
 	return ret;
 }
 int regroup_process(int pid){
-	pid_t pids[1]={pid};
-	PROCTAB *PT=openproc(PROC_FILLCOM|PROC_FILLMEM||PROC_FILLSTAT|PROC_FILLSTATUS|PROC_PID, pids);
+	pid_t pids[2]={pid, 0};
+	PROCTAB *PT=openproc(PROC_FILLCOM|PROC_FILLMEM|PROC_FILLSTAT|PROC_FILLSTATUS|PROC_PID, pids);
+	if(!PT)
+		return 0;
 	proc_t *pr=readproc(PT, NULL);
+	if(!pr){
+		free(PT);
+		return 0;
+	}
 	int ret = _group_process(pr);
 	_freeproc(pr);
 	closeproc(PT);
@@ -47,8 +54,11 @@ int grouper_init(EV_P){
 		return EXIT_FAILURE;
 
 	int i;
-	for(i=0; ptable[i]; i++)
+	for(i=0; ptable[i]; i++){
 		_group_process(ptable[i]);
+		_freeproc(ptable[i]);
+	}
 
+	free(ptable);
 	return EXIT_SUCCESS;
 }

@@ -64,6 +64,8 @@ static int cgroup_get_mount(){
 			break;
 		ret = getdelim(&line, &size, '\t', cgroup_types_file);
 	}
+	if(line)
+		free(line);
 
 	struct mntent *entry;
 	FILE *mounts = setmntent("/proc/mounts", "r");
@@ -151,6 +153,9 @@ out:
 	free(tmp_full_path);
 	free(tmp_path);
 	return NULL;
+}
+void cgroup_put(struct cgroup *cgr){
+	free(cgr->full_path);
 }
 int cgroup_attach(struct cgroup *cgr, int pid){
 	char *tasks_filename;
